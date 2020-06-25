@@ -57,13 +57,16 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
         model.train()
         num_batches = hyp_params.n_train // hyp_params.batch_size
         proc_loss, proc_size = 0, 0
+        losses = []
+        correct_predictions = 0
+        n_examples = hyp_params.n_train
         start_time = time.time()
 
         for i_batch, data_batch in enumerate(train_loader):
-            input_ids = d["input_ids"]
-            attention_mask = d["attention_mask"]
-            targets = d["label"]
-            images = data['image']
+            input_ids = data_batch["input_ids"]
+            attention_mask = data_batch["attention_mask"]
+            targets = data_batch["label"]
+            images = data_batch['image']
 
             model.zero_grad()
 
@@ -90,17 +93,16 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             )
 
             _, preds = torch.max(outputs, dim=1)
-            loss = loss_fn(outputs, targets)
+            loss = criterion(outputs, targets)
             correct_predictions += torch.sum(preds == targets)
             losses.append(loss.item())
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), hyp_params.clip)
             optimizer.step()
-            optimizer.zero_grad()
+            #optimizer.zero_grad()
 
-            proc_loss += raw_loss.item() * batch_size
+            proc_loss += loss * batch_size
             proc_size += batch_size
-            epoch_loss += combined_loss.item() * batch_size
             if i_batch % hyp_params.log_interval == 0 and i_batch > 0:
                 avg_loss = proc_loss / proc_size
                 elapsed_time = time.time() - start_time
@@ -109,41 +111,50 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
                 proc_loss, proc_size = 0, 0
                 start_time = time.time()
 
-        return epoch_loss / hyp_params.n_train
+        return correct_predictions.double() / n_examples, np.mean(losses)
 
-    def evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=False):
+    def evaluate(model, feature_extractor, criterion, test=False):
         model.eval()
         loader = test_loader if test else valid_loader
         total_loss = 0.0
 
         results = []
         truths = []
+        correct_predictions = 0
+        n_examples = hyp_params.n_valid
 
         with torch.no_grad():
-            for i_batch, (batch_X, batch_Y, batch_META) in enumerate(loader):
-                sample_ind, text, audio, vision = batch_X
-                eval_attr = batch_Y.squeeze(dim=-1) # if num of labels is 1
+            for i_batch, data_batch in enumerate(train_loader):
+                input_ids = data_batch["input_ids"]
+                attention_mask = data_batch["attention_mask"]
+                targets = data_batch["label"]
+                images = data_batch['image']
 
                 if hyp_params.use_cuda:
                     with torch.cuda.device(0):
-                        text, audio, vision, eval_attr = text.cuda(), audio.cuda(), vision.cuda(), eval_attr.cuda()
-                        if hyp_params.dataset == 'iemocap':
-                            eval_attr = eval_attr.long()
+                        input_ids = input_ids.cuda()
+                        attention_mask = attention_mask.cuda()
+                        targets = targets.cuda()
+                        images = images.cuda()
 
-                batch_size = text.size(0)
+                if images.size()[0] != input_ids.size()[0]:
+                    continue
 
-                if (ctc_a2l_module is not None) and (ctc_v2l_module is not None):
-                    ctc_a2l_net = nn.DataParallel(ctc_a2l_module) if batch_size > 10 else ctc_a2l_module
-                    ctc_v2l_net = nn.DataParallel(ctc_v2l_module) if batch_size > 10 else ctc_v2l_module
-                    audio, _ = ctc_a2l_net(audio)     # audio aligned to text
-                    vision, _ = ctc_v2l_net(vision)   # vision aligned to text
+                with torch.no_grad():
+                    feature_images = feature_extractor.features(images)
+                    feature_images = feature_extractor.avgpool(feature_images)
+                    feature_images = torch.flatten(feature_images, 1)
+                    feature_images = feature_extractor.classifier[0](feature_images)
 
-                net = nn.DataParallel(model) if batch_size > 10 else model
-                preds, _ = net(text, audio, vision)
-                if hyp_params.dataset == 'iemocap':
-                    preds = preds.view(-1, 2)
-                    eval_attr = eval_attr.view(-1)
-                total_loss += criterion(preds, eval_attr).item() * batch_size
+                outputs = model(
+                    input_ids=input_ids,
+                    attention_mask=attention_mask,
+                    feature_images=feature_images
+                )
+
+                _, preds = torch.max(outputs, dim=1)
+                total_loss += criterion(outputs, targets).item() * batch_size
+                correct_predictions += torch.sum(preds == targets)
 
                 # Collect the results into dictionary
                 results.append(preds)
@@ -153,21 +164,21 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
 
         results = torch.cat(results)
         truths = torch.cat(truths)
-        return avg_loss, results, truths
+        return correct_predictions.double() / n_examples, avg_loss
 
     best_valid = 1e8
     for epoch in range(1, hyp_params.num_epochs+1):
         start = time.time()
-        train(model, optimizer, criterion, ctc_a2l_module, ctc_v2l_module, ctc_a2l_optimizer, ctc_v2l_optimizer, ctc_criterion)
-        val_loss, _, _ = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=False)
-        test_loss, _, _ = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
+        train_acc, train_loss = train(model, feature_extractor, optimizer, criterion)
+        val_acc, val_loss, = evaluate(model, feature_extractor, criterion, test=False)
+        #test_loss, _, _ = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
 
         end = time.time()
         duration = end-start
         scheduler.step(val_loss)    # Decay learning rate by validation loss
 
         print("-"*50)
-        print('Epoch {:2d} | Time {:5.4f} sec | Valid Loss {:5.4f} | Test Loss {:5.4f}'.format(epoch, duration, val_loss, test_loss))
+        print('Epoch {:2d} | Time {:5.4f} sec | Valid Loss {:5.4f}'.format(epoch, duration, val_loss))
         print("-"*50)
 
         if val_loss < best_valid:
@@ -176,14 +187,15 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             best_valid = val_loss
 
     model = load_model(hyp_params, name=hyp_params.name)
-    _, results, truths = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
-
+    #_, results, truths = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
+    '''
     if hyp_params.dataset == "mosei_senti":
         eval_mosei_senti(results, truths, True)
     elif hyp_params.dataset == 'mosi':
         eval_mosi(results, truths, True)
     elif hyp_params.dataset == 'iemocap':
         eval_iemocap(results, truths)
+    '''
 
     sys.stdout.flush()
     input('[Press Any Key to start another run]')
