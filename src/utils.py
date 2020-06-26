@@ -1,5 +1,6 @@
 from src.dataset import MemeDataset
 from torchvision import transforms
+import torch
 import os
 
 
