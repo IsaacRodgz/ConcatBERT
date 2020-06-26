@@ -158,7 +158,7 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
 
                 # Collect the results into dictionary
                 results.append(preds)
-                truths.append(eval_attr)
+                truths.append(targets)
 
         avg_loss = total_loss / (hyp_params.n_test if test else hyp_params.n_valid)
 
