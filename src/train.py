@@ -186,7 +186,7 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             save_model(hyp_params, model, name=hyp_params.name)
             best_valid = val_loss
 
-    model = load_model(hyp_params, name=hyp_params.name)
+    #model = load_model(hyp_params, name=hyp_params.name)
     #_, results, truths = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
     '''
     if hyp_params.dataset == "mosei_senti":
