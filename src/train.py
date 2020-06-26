@@ -153,7 +153,7 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
                 )
 
                 _, preds = torch.max(outputs, dim=1)
-                total_loss += criterion(outputs, targets).item() * batch_size
+                total_loss += criterion(outputs, targets).item() * hyp_params.batch_size
                 correct_predictions += torch.sum(preds == targets)
 
                 # Collect the results into dictionary
