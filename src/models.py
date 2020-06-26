@@ -98,7 +98,7 @@ class GatedAverageBERTModel(nn.Module):
 
     def __init__(self, hyp_params):
 
-        super(ConcatBERTModel, self).__init__()
+        super(GatedAverageBERTModel, self).__init__()
         self.bert = BertModel.from_pretrained(hyp_params.bert_model)
         self.gated_linear1 = GatedMultimodalLayer(self.bert.config.hidden_size, hyp_params.image_feature_size, 512)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
