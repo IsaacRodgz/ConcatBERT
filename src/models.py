@@ -37,7 +37,7 @@ class GatedMultimodalLayer(nn.Module):
         x = torch.cat((h1, h2), dim=1)
         z = self.sigmoid_f(torch.matmul(x, self.weight_sigmoid.t()))
 
-        return z*h1 + (1-z)*h2
+        return z.view(z.size()[0],1)*h1 + (1-z).view(z.size()[0],1)*h2
 
 
 class AverageBERTModel(nn.Module):
