@@ -52,6 +52,8 @@ parser.add_argument('--seed', type=int, default=1111,
                     help='random seed')
 parser.add_argument('--no_cuda', action='store_true',
                     help='do not use cuda')
+parser.add_argument('--name', type=str, default='model',
+                    help='name of the trial (default: "model")')
 
 args = parser.parse_args()
 
