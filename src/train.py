@@ -125,7 +125,7 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
         n_examples = hyp_params.n_valid
 
         with torch.no_grad():
-            for i_batch, data_batch in enumerate(train_loader):
+            for i_batch, data_batch in enumerate(loader):
                 input_ids = data_batch["input_ids"]
                 attention_mask = data_batch["attention_mask"]
                 targets = data_batch["label"]
