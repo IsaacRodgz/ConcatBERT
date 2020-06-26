@@ -92,12 +92,10 @@ valid_data = get_data(args, dataset, 'dev')
 
 train_loader = DataLoader(train_data,
                         batch_size=args.batch_size,
-                        shuffle=True,
-                        num_workers=4)
+                        shuffle=True)
 valid_loader = DataLoader(valid_data,
                         batch_size=args.batch_size,
-                        shuffle=True,
-                        num_workers=4)
+                        shuffle=True)
 #test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
 
 print('Finish loading the data....')
