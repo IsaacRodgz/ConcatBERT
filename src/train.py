@@ -101,8 +101,8 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             optimizer.step()
             #optimizer.zero_grad()
 
-            proc_loss += loss * batch_size
-            proc_size += batch_size
+            proc_loss += loss * hyp_params.batch_size
+            proc_size += hyp_params.batch_size
             if i_batch % hyp_params.log_interval == 0 and i_batch > 0:
                 avg_loss = proc_loss / proc_size
                 elapsed_time = time.time() - start_time
