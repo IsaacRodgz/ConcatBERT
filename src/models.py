@@ -48,6 +48,7 @@ class AverageBERTModel(nn.Module):
         self.bert = BertModel.from_pretrained(hyp_params.bert_model)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear1 = nn.Linear(self.bert.config.hidden_size+hyp_params.image_feature_size, 512)
+        self.bn1 = nn.BatchNorm1d(512)
         self.drop2 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear2 = nn.Linear(512, hyp_params.output_dim)
 
@@ -63,6 +64,7 @@ class AverageBERTModel(nn.Module):
         x = torch.cat((mean_hidden, feature_images), dim=1)
         x = self.drop1(x)
         x = self.linear1(x)
+        x = self.bn1(x)
         x = self.drop2(x)
 
         return self.linear2(x)
@@ -76,6 +78,7 @@ class ConcatBERTModel(nn.Module):
         self.bert = BertModel.from_pretrained(hyp_params.bert_model)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear1 = nn.Linear(self.bert.config.hidden_size+hyp_params.image_feature_size, 512)
+        self.bn1 = nn.BatchNorm1d(512)
         self.drop2 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear2 = nn.Linear(512, hyp_params.output_dim)
 
@@ -89,6 +92,7 @@ class ConcatBERTModel(nn.Module):
         x = torch.cat((pooled_output, feature_images), dim=1)
         x = self.drop1(x)
         x = self.linear1(x)
+        x = self.bn1(x)
         x = self.drop2(x)
 
         return self.linear2(x)
