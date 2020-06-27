@@ -101,6 +101,7 @@ class GatedAverageBERTModel(nn.Module):
         super(GatedAverageBERTModel, self).__init__()
         self.bert = BertModel.from_pretrained(hyp_params.bert_model)
         self.gated_linear1 = GatedMultimodalLayer(self.bert.config.hidden_size, hyp_params.image_feature_size, 512)
+        self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear1 = nn.Linear(512, hyp_params.output_dim)
 
@@ -114,6 +115,7 @@ class GatedAverageBERTModel(nn.Module):
         mean_hidden = torch.mean(last_hidden, dim = 1)
 
         x = self.gated_linear1(mean_hidden, feature_images)
+        x = self.bn1(x)
         x = self.drop1(x)
 
         return self.linear1(x)
