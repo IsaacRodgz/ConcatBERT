@@ -1,5 +1,6 @@
 import os
 import torch
+import json
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -22,6 +23,7 @@ class MemeDataset(Dataset):
         self.full_data_path = os.path.join(root_dir, dataset) + f'/{split}.jsonl'
         self.data_dict = pd.read_json(self.full_data_path, lines=True)
         self.root_dir = root_dir
+        self.dataset = dataset
         self.transform = transform
 
         # BERT tokenizer
@@ -35,7 +37,7 @@ class MemeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = self.root_dir+"/meme_dataset/"+self.data_dict.iloc[idx,1]
+        img_name = self.root_dir+'/'+self.dataset+'/'+self.data_dict.iloc[idx,1]
         image = Image.open(img_name).convert('RGB')
         label = self.data_dict.iloc[idx,2]
 
@@ -61,7 +63,7 @@ class MemeDataset(Dataset):
         return sample
     
     
-    class MMIMDbDataset(Dataset):
+class MMIMDbDataset(Dataset):
     """Multimodal IMDb dataset (http://lisi1.unal.edu.co/mmimdb)"""
 
     def __init__(self, root_dir, dataset, split, model_name, max_len, transform=None):
@@ -74,10 +76,33 @@ class MemeDataset(Dataset):
         """
 
         # Metadata
-        self.full_data_path = os.path.join(root_dir, dataset) + f'/{split}.jsonl'
-        self.data_dict = pd.read_json(self.full_data_path, lines=True)
+        self.full_data_path = os.path.join(root_dir, dataset) + 'split.json'
+        with open(self.full_data_path) as json_data:
+            self.data_dict = json.load(json_data)[split]
+        
+        plots_test = []
+        image_names_test = []
+        genres_test = []
+
+        for id in self.data_dict:
+            with open(os.path.join(root_dir, dataset)+"dataset/"+str(id)+'.json') as json_data:
+                movie = json.load(json_data)
+            plots_test.append(movie['plot'])
+            genres_test.append(movie['genres'])
+            image_names_test.append(os.path.join(root_dir, dataset)+"dataset/"+str(id)+'.jpeg')
+            
         self.root_dir = root_dir
+        self.dataset = dataset
         self.transform = transform
+        self.genres = ['Horror', 'News', 'Animation',
+                       'Musical', 'Fantasy', 'Family',
+                       'Romance', 'Short', 'Comedy',
+                       'Film-Noir', 'Mystery', 'Thriller',
+                       'Documentary', 'Crime', 'History',
+                       'Biography', 'Western', 'War',
+                       'Adult', 'Adventure', 'Drama',
+                       'Action', 'Music', 'Sci-Fi',
+                       'Sport', 'Reality-TV', 'Talk-Show']
 
         # BERT tokenizer
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -90,7 +115,7 @@ class MemeDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = self.root_dir+"/meme_dataset/"+self.data_dict.iloc[idx,1]
+        img_name = self.root_dir+'/'+self.dataset+'/'+self.data_dict.iloc[idx,1]
         image = Image.open(img_name).convert('RGB')
         label = self.data_dict.iloc[idx,2]
 

@@ -90,7 +90,7 @@ print("Start loading the data....")
 
 train_data = get_data(args, dataset, 'train')
 valid_data = get_data(args, dataset, 'dev')
-#test_data = get_data(args, dataset, 'test')
+test_data = get_data(args, dataset, 'test')
 
 train_loader = DataLoader(train_data,
                         batch_size=args.batch_size,
@@ -98,7 +98,10 @@ train_loader = DataLoader(train_data,
 valid_loader = DataLoader(valid_data,
                         batch_size=args.batch_size,
                         shuffle=True)
-#test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
+if test_data is None:
+    test_loader = None
+else:
+    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
 
 print('Finish loading the data....')
 
@@ -117,4 +120,4 @@ hyp_params.output_dim = output_dim_dict.get(dataset, 2)
 hyp_params.criterion = criterion_dict.get(dataset, 'CrossEntropyLoss')
 
 if __name__ == '__main__':
-    test_loss = train.initiate(hyp_params, train_loader, valid_loader)
+    test_loss = train.initiate(hyp_params, train_loader, valid_loader, test_loader)

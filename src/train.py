@@ -8,6 +8,12 @@ import numpy as np
 import time
 import sys
 
+from sklearn.metrics import classification_report
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import precision_recall_fscore_support
+from sklearn.metrics import accuracy_score, f1_score
+from src.eval_metrics import *
+
 ####################################################################
 #
 # Construct the model
@@ -165,21 +171,23 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
 
         results = torch.cat(results)
         truths = torch.cat(truths)
-        return correct_predictions.double() / n_examples, avg_loss
+        return results, truths, avg_loss
 
     best_valid = 1e8
     for epoch in range(1, hyp_params.num_epochs+1):
         start = time.time()
         train_acc, train_loss = train(model, feature_extractor, optimizer, criterion)
-        val_acc, val_loss, = evaluate(model, feature_extractor, criterion, test=False)
-        #test_loss, _, _ = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
+        results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=False)
+        if test_loader is not None:
+            results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=True)
 
         end = time.time()
         duration = end-start
         scheduler.step(val_loss)    # Decay learning rate by validation loss
 
+        eval_hateful_meme(results, truths)
         print("-"*50)
-        print('Epoch {:2d} | Time {:5.4f} sec | Train Acc {:5.4f} | Valid Acc {:5.4f} | Valid Loss {:5.4f}'.format(epoch, duration, train_acc, val_acc, val_loss))
+        print('Epoch {:2d} | Time {:5.4f} sec | Train Acc {:5.4f} | Train Loss {:5.4f} | Valid Loss {:5.4f}'.format(epoch, duration, train_acc, train_loss, val_loss))
         print("-"*50)
 
         if val_loss < best_valid:
@@ -187,8 +195,9 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             save_model(hyp_params, model, name=hyp_params.name)
             best_valid = val_loss
 
-    #model = load_model(hyp_params, name=hyp_params.name)
-    #_, results, truths = evaluate(model, ctc_a2l_module, ctc_v2l_module, criterion, test=True)
+    if test_loader is not None:
+        model = load_model(hyp_params, name=hyp_params.name)
+        _, _, _ = evaluate(model, feature_extractor, criterion, test=True)
     '''
     if hyp_params.dataset == "mosei_senti":
         eval_mosei_senti(results, truths, True)
