@@ -65,10 +65,12 @@ use_cuda = False
 
 output_dim_dict = {
     'meme_dataset': 2,
+    'mmimdb': 27
 }
 
 criterion_dict = {
-    'meme_dataset': 'CrossEntropyLoss'
+    'meme_dataset': 'CrossEntropyLoss',
+    'mmimdb': 'BCEWithLogitsLoss'
 }
 
 torch.set_default_tensor_type('torch.FloatTensor')
@@ -116,8 +118,8 @@ hyp_params.use_cuda = use_cuda
 hyp_params.dataset = dataset
 hyp_params.n_train, hyp_params.n_valid = len(train_data), len(valid_data)
 hyp_params.model = args.model.strip()
-hyp_params.output_dim = output_dim_dict.get(dataset, 2)
-hyp_params.criterion = criterion_dict.get(dataset, 'CrossEntropyLoss')
+hyp_params.output_dim = output_dim_dict.get(dataset)
+hyp_params.criterion = criterion_dict.get(dataset)
 
 if __name__ == '__main__':
     test_loss = train.initiate(hyp_params, train_loader, valid_loader, test_loader)

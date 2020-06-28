@@ -7,6 +7,8 @@ from PIL import Image
 from torch.utils.data.dataset import Dataset
 from transformers import BertTokenizer
 
+Image.MAX_IMAGE_PIXELS = 1000000000
+
 class MemeDataset(Dataset):
     """Hateful memes dataset from Facebook challenge"""
 
@@ -76,20 +78,22 @@ class MMIMDbDataset(Dataset):
         """
 
         # Metadata
-        self.full_data_path = os.path.join(root_dir, dataset) + 'split.json'
+        self.full_data_path = os.path.join(root_dir, dataset) + '/split.json'
         with open(self.full_data_path) as json_data:
-            self.data_dict = json.load(json_data)[split]
+            self.data_dict_raw = json.load(json_data)[split]
         
-        plots_test = []
-        image_names_test = []
-        genres_test = []
+        plots = []
+        image_names = []
+        genres = []
 
-        for id in self.data_dict:
-            with open(os.path.join(root_dir, dataset)+"dataset/"+str(id)+'.json') as json_data:
+        for id in self.data_dict_raw:
+            with open(os.path.join(root_dir, dataset)+"/dataset/"+str(id)+'.json') as json_data:
                 movie = json.load(json_data)
-            plots_test.append(movie['plot'])
-            genres_test.append(movie['genres'])
-            image_names_test.append(os.path.join(root_dir, dataset)+"dataset/"+str(id)+'.jpeg')
+            plots.append(movie['plot'][0])
+            genres.append(movie['genres'])
+            image_names.append(os.path.join(root_dir, dataset)+"/dataset/"+str(id)+'.jpeg')
+            
+        self.data_dict = pd.DataFrame({'image': image_names, 'label': genres, 'text': plots})
             
         self.root_dir = root_dir
         self.dataset = dataset
@@ -103,6 +107,7 @@ class MMIMDbDataset(Dataset):
                        'Adult', 'Adventure', 'Drama',
                        'Action', 'Music', 'Sci-Fi',
                        'Sport', 'Reality-TV', 'Talk-Show']
+        self.num_classes = len(self.genres)
 
         # BERT tokenizer
         self.tokenizer = BertTokenizer.from_pretrained(model_name)
@@ -115,11 +120,14 @@ class MMIMDbDataset(Dataset):
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        img_name = self.root_dir+'/'+self.dataset+'/'+self.data_dict.iloc[idx,1]
+        img_name = self.data_dict.iloc[idx,0]
         image = Image.open(img_name).convert('RGB')
-        label = self.data_dict.iloc[idx,2]
+        
+        label = self.data_dict.iloc[idx,1]
+        indeces = torch.LongTensor([self.genres.index(e) for e in label])
+        label = torch.nn.functional.one_hot(indeces, num_classes = self.num_classes).sum(dim=0)
 
-        text = self.data_dict.iloc[idx,3]
+        text = self.data_dict.iloc[idx,2]
         text_encoded = self.tokenizer.encode_plus(
             text,
             add_special_tokens=True,
@@ -136,6 +144,6 @@ class MMIMDbDataset(Dataset):
         sample = {'image': image,
                   'input_ids': text_encoded['input_ids'].flatten(),
                   'attention_mask': text_encoded['attention_mask'].flatten(),
-                  "label": int(label)}
+                  "label": label.type(torch.FloatTensor)}
 
         return sample

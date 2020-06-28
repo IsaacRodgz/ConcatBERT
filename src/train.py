@@ -98,8 +98,11 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
                 attention_mask=attention_mask,
                 feature_images=feature_images
             )
-
-            _, preds = torch.max(outputs, dim=1)
+    
+            if hyp_params.dataset == 'meme_dataset':
+                _, preds = torch.max(outputs, dim=1)
+            else:
+                preds = outputs
             loss = criterion(outputs, targets)
             correct_predictions += torch.sum(preds == targets)
             losses.append(loss.item())
