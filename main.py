@@ -117,6 +117,10 @@ hyp_params = args
 hyp_params.use_cuda = use_cuda
 hyp_params.dataset = dataset
 hyp_params.n_train, hyp_params.n_valid = len(train_data), len(valid_data)
+if test_data is None:
+    pass
+else:
+    hyp_params.n_test = len(test_data)
 hyp_params.model = args.model.strip()
 hyp_params.output_dim = output_dim_dict.get(dataset)
 hyp_params.criterion = criterion_dict.get(dataset)

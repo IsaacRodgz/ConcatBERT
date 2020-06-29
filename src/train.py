@@ -104,7 +104,8 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             else:
                 preds = outputs
             loss = criterion(outputs, targets)
-            correct_predictions += torch.sum(preds == targets)
+            preds_round = (preds > 0.5).float()
+            correct_predictions += torch.sum(preds_round == targets)
             losses.append(loss.item())
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(), hyp_params.clip)
@@ -162,7 +163,11 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
                     feature_images=feature_images
                 )
 
-                _, preds = torch.max(outputs, dim=1)
+                if hyp_params.dataset == 'meme_dataset':
+                    _, preds = torch.max(outputs, dim=1)
+                else:
+                    preds = outputs
+                
                 total_loss += criterion(outputs, targets).item() * hyp_params.batch_size
                 correct_predictions += torch.sum(preds == targets)
 
@@ -211,4 +216,4 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
     '''
 
     sys.stdout.flush()
-    input('[Press Any Key to start another run]')
+    #input('[Press Any Key to start another run]')
