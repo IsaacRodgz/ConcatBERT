@@ -14,6 +14,11 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score, f1_score
 from src.eval_metrics import *
 
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
+
+
 ####################################################################
 #
 # Construct the model
@@ -115,10 +120,11 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
             proc_loss += loss * hyp_params.batch_size
             proc_size += hyp_params.batch_size
             if i_batch % hyp_params.log_interval == 0 and i_batch > 0:
+                train_acc, train_f1 = metrics(preds_round, targets)
                 avg_loss = proc_loss / proc_size
                 elapsed_time = time.time() - start_time
-                print('Epoch {:2d} | Batch {:3d}/{:3d} | Time/Batch(ms) {:5.2f} | Train Loss {:5.4f}'.
-                      format(epoch, i_batch, num_batches, elapsed_time * 1000 / hyp_params.log_interval, avg_loss))
+                print('Epoch {:2d} | Batch {:3d}/{:3d} | Time/Batch(ms) {:5.2f} | Train Loss {:5.4f} | Train Acc {:5.4f} | Train f1-score {:5.4f}'.
+                      format(epoch, i_batch, num_batches, elapsed_time * 1000 / hyp_params.log_interval, avg_loss, train_acc, train_f1))
                 proc_loss, proc_size = 0, 0
                 start_time = time.time()
 
@@ -186,16 +192,17 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
         start = time.time()
         train_acc, train_loss = train(model, feature_extractor, optimizer, criterion)
         results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=False)
-        if test_loader is not None:
-            results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=True)
+        #if test_loader is not None:
+        #    results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=True)
 
         end = time.time()
         duration = end-start
-        scheduler.step(val_loss)    # Decay learning rate by validation loss
+        scheduler.step(val_loss)
 
-        eval_hateful_meme(results, truths)
+        val_acc, val_f1 = metrics(results, truths)
+        val_acc2 = multiclass_acc(results, truths)
         print("-"*50)
-        print('Epoch {:2d} | Time {:5.4f} sec | Train Acc {:5.4f} | Train Loss {:5.4f} | Valid Loss {:5.4f}'.format(epoch, duration, train_acc, train_loss, val_loss))
+        print('Epoch {:2d} | Time {:5.4f} sec | Train Loss {:5.4f} | Valid Loss {:5.4f} | Valid Acc {:5.4f} -- {:5.4f} | Valid f1-score {:5.4f}'.format(epoch, duration, train_loss, val_loss, val_acc, val_acc2, val_f1))
         print("-"*50)
 
         if val_loss < best_valid:
@@ -205,15 +212,10 @@ def train_model(settings, hyp_params, train_loader, valid_loader, test_loader):
 
     if test_loader is not None:
         model = load_model(hyp_params, name=hyp_params.name)
-        _, _, _ = evaluate(model, feature_extractor, criterion, test=True)
-    '''
-    if hyp_params.dataset == "mosei_senti":
-        eval_mosei_senti(results, truths, True)
-    elif hyp_params.dataset == 'mosi':
-        eval_mosi(results, truths, True)
-    elif hyp_params.dataset == 'iemocap':
-        eval_iemocap(results, truths)
-    '''
+        results, truths, val_loss = evaluate(model, feature_extractor, criterion, test=True)
+        test_acc, test_f1 = metrics(results, truths)
+        
+        print("\n\nTest Acc {:5.4f} | Test f1-score {:5.4f}".format(test_acc, test_f1))
 
     sys.stdout.flush()
-    #input('[Press Any Key to start another run]')
+    

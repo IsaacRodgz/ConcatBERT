@@ -6,7 +6,7 @@ from sklearn.metrics import precision_recall_fscore_support
 from sklearn.metrics import accuracy_score, f1_score
 
 
-def eval_hateful_meme(results, truths):
+def metrics(results, truths):
     preds = results.view(-1).cpu().detach().numpy()
     truth = truths.view(-1).cpu().detach().numpy()
     
@@ -16,7 +16,14 @@ def eval_hateful_meme(results, truths):
     f_score = f1_score(truth, preds, average='micro')
     accuarcy = accuracy_score(truth, preds)
 
-    print("F1 score: ", f_score)
-    print("Accuracy: ", accuarcy)
+    return accuarcy, f_score
 
-    print("-" * 50)
+
+def multiclass_acc(results, truths):
+    preds = results.view(-1).cpu().detach().numpy()
+    truth = truths.view(-1).cpu().detach().numpy()
+    
+    preds = np.where(preds > 0.5, 1, 0)
+    truth = np.where(truth > 0.5, 1, 0)
+
+    return np.sum(preds == truths) / float(len(truths))

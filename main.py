@@ -4,6 +4,10 @@ from torch.utils.data import DataLoader
 from src.utils import *
 from src import train
 
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]="1,2"
+
 
 parser = argparse.ArgumentParser(description='Meme Hatefulness detection')
 
