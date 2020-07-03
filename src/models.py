@@ -2,7 +2,6 @@ import math
 import torch
 from torch import nn
 import torch.nn.functional as F
-from transformers import BertModel
 
 
 class GatedMultimodalLayer(nn.Module):
@@ -45,18 +44,12 @@ class AverageBERTModel(nn.Module):
     def __init__(self, hyp_params):
 
         super(AverageBERTModel, self).__init__()
-        self.bert = BertModel.from_pretrained(hyp_params.bert_model)
-        self.linear1 = nn.Linear(self.bert.config.hidden_size+hyp_params.image_feature_size, 512)
+        self.linear1 = nn.Linear(hyp_params.bert_hidden_size+hyp_params.image_feature_size, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear2 = nn.Linear(512, hyp_params.output_dim)
 
-    def forward(self, input_ids, attention_mask, feature_images):
-
-        last_hidden, pooled_output = self.bert(
-            input_ids=input_ids,
-            attention_mask=attention_mask
-        )
+    def forward(self, last_hidden, pooled_output, feature_images):
 
         mean_hidden = torch.mean(last_hidden, dim = 1)
 
@@ -74,18 +67,12 @@ class ConcatBERTModel(nn.Module):
     def __init__(self, hyp_params):
 
         super(ConcatBERTModel, self).__init__()
-        self.bert = BertModel.from_pretrained(hyp_params.bert_model)
-        self.linear1 = nn.Linear(self.bert.config.hidden_size+hyp_params.image_feature_size, 512)
+        self.linear1 = nn.Linear(hyp_params.bert_hidden_size+hyp_params.image_feature_size, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear2 = nn.Linear(512, hyp_params.output_dim)
 
-    def forward(self, input_ids, attention_mask, feature_images):
-
-        _, pooled_output = self.bert(
-            input_ids=input_ids,
-            attention_mask=attention_mask
-        )
+    def forward(self, last_hidden, pooled_output, feature_images):
 
         x = torch.cat((pooled_output, feature_images), dim=1)
         x = self.drop1(x)
@@ -101,18 +88,12 @@ class GatedAverageBERTModel(nn.Module):
     def __init__(self, hyp_params):
 
         super(GatedAverageBERTModel, self).__init__()
-        self.bert = BertModel.from_pretrained(hyp_params.bert_model)
-        self.gated_linear1 = GatedMultimodalLayer(self.bert.config.hidden_size, hyp_params.image_feature_size, 512)
+        self.gated_linear1 = GatedMultimodalLayer(hyp_params.bert_hidden_size, hyp_params.image_feature_size, 512)
         self.bn1 = nn.BatchNorm1d(512)
         self.drop1 = nn.Dropout(p=hyp_params.mlp_dropout)
         self.linear1 = nn.Linear(512, hyp_params.output_dim)
 
-    def forward(self, input_ids, attention_mask, feature_images):
-
-        last_hidden, pooled_output = self.bert(
-            input_ids=input_ids,
-            attention_mask=attention_mask
-        )
+    def forward(self, last_hidden, pooled_output, feature_images):
 
         mean_hidden = torch.mean(last_hidden, dim = 1)
 

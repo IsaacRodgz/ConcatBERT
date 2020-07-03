@@ -13,8 +13,6 @@ def get_data(args, dataset, split='train'):
 
             data = MemeDataset(args.data_path,
                                dataset, split,
-                               args.bert_model,
-                               args.max_token_length,
                                transform=transforms.Compose([
                                    transforms.Resize((256, 256)),
                                    transforms.ToTensor(),
@@ -25,8 +23,6 @@ def get_data(args, dataset, split='train'):
 
         data = MMIMDbDataset(args.data_path,
                            dataset, split,
-                           args.bert_model,
-                           args.max_token_length,
                            transform=transforms.Compose([
                                transforms.Resize((256, 256)),
                                transforms.ToTensor(),

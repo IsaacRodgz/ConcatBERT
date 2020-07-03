@@ -32,6 +32,8 @@ parser.add_argument('--cnn_model', type=str, default="vgg16",
                     help='pretrained CNN to use for image feature extraction')
 parser.add_argument('--image_feature_size', type=int, default=4096,
                     help='image feature size extracted from pretrained CNN (default: 4096)')
+parser.add_argument('--bert_hidden_size', type=int, default=768,
+                    help='bert hidden size for each word token (default: 768)')
 
 # Tuning
 parser.add_argument('--batch_size', type=int, default=8, metavar='N',
@@ -58,6 +60,8 @@ parser.add_argument('--no_cuda', action='store_true',
                     help='do not use cuda')
 parser.add_argument('--name', type=str, default='model',
                     help='name of the trial (default: "model")')
+parser.add_argument('--num_workers', type=int, default=6,
+                    help='number of workers to use for DataLoaders (default: 6)')
 
 args = parser.parse_args()
 
@@ -100,14 +104,16 @@ test_data = get_data(args, dataset, 'test')
 
 train_loader = DataLoader(train_data,
                         batch_size=args.batch_size,
-                        shuffle=True)
+                        shuffle=True,
+                        num_workers=args.num_workers)
 valid_loader = DataLoader(valid_data,
                         batch_size=args.batch_size,
-                        shuffle=True)
+                        shuffle=True,
+                        num_workers=args.num_workers)
 if test_data is None:
     test_loader = None
 else:
-    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True)
+    test_loader = DataLoader(test_data, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
 
 print('Finish loading the data....')
 
